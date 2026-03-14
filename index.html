@@ -1,342 +1,334 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DFA — (11+00)(1+0)*(101+111+01)(00*+11*)(1+0+11)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
-<div class="page">
+  <div class="page">
 
-  <header class="title-area">
-    <h1>DFA State Diagram</h1>
-    <div class="regex-box">(11+00)(1+0)*(101+111+01)(00*+11*)(1+0+11)</div>
-  </header>
+    <header class="title-area">
+      <h1>DFA State Diagram</h1>
+      <div class="regex-box">(11+00)(1+0)*(101+111+01)(00*+11*)(1+0+11)</div>
+    </header>
 
-  <!-- Simulator -->
-  <section class="sim-panel">
-    <div class="sim-label">Test a string</div>
-    <div class="sim-row">
-      <input type="text" id="inp" placeholder="Enter binary string like 1110110" autocomplete="off" />
-      <div class="badge idle" id="badge">Waiting</div>
-    </div>
-    <div class="sim-path" id="path"></div>
-  </section>
+    <!-- Simulator -->
+    <section class="sim-panel">
+      <div class="sim-label">Test a string</div>
+      <div class="sim-row">
+        <input type="text" id="inp" placeholder="Enter binary string like 1110110" autocomplete="off" />
+        <div class="badge idle" id="badge">Waiting</div>
+      </div>
+      <div class="sim-path" id="path"></div>
+    </section>
 
-  <!-- Diagram -->
-  <section class="diagram-area">
-    <div class="sec-label">State Diagram — 17 states + dead state (minimized DFA)</div>
-    <div class="diagram-card">
-      <svg id="svg" viewBox="0 0 1060 640" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div>
-    <div class="legend">
-      <div class="legend-item"><span class="legend-dot normal"></span> State (empty)</div>
-      <div class="legend-item"><span class="legend-dot normal" style="font-size:10px;line-height:12px;text-align:center">—</span> Start state ( – )</div>
-      <div class="legend-item"><span class="legend-dot accept"></span> Accept state ( + )</div>
-      <div class="legend-item"><span class="legend-dot active"></span> Current state (sim)</div>
-      <div class="legend-item"><span class="legend-dot dead-l"></span> Dead / trap state</div>
-    </div>
-  </section>
+    <!-- Diagram -->
+    <section class="diagram-area">
+      <div class="sec-label">State Diagram — 17 states + dead state (minimized DFA)</div>
+      <div class="diagram-card">
+        <svg id="svg" viewBox="0 0 1060 640" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </section>
 
-  <footer class="foot">
-    Constructed via Thompson's NFA → Subset Construction → Hopcroft Minimization
-  </footer>
+  </div>
 
-</div>
+  <script>
+    // ═══════════════════════════════════════
+    //  DFA data
+    // ═══════════════════════════════════════
+    const T = {
+      0: { 0: 1, 1: 2 }, 1: { 0: 3, 1: -1 }, 2: { 0: -1, 1: 3 }, 3: { 0: 4, 1: 5 },
+      4: { 0: 4, 1: 6 }, 5: { 0: 4, 1: 7 }, 6: { 0: 8, 1: 9 }, 7: { 0: 4, 1: 10 },
+      8: { 0: 11, 1: 12 }, 9: { 0: 13, 1: 14 }, 10: { 0: 8, 1: 15 },
+      11: { 0: 11, 1: 12 }, 12: { 0: 8, 1: 16 }, 13: { 0: 4, 1: 6 },
+      14: { 0: 11, 1: 14 }, 15: { 0: 11, 1: 14 }, 16: { 0: 13, 1: 14 }
+    };
+    const ACC = new Set([11, 12, 13, 14, 16]);
 
-<script>
-// ═══════════════════════════════════════
-//  DFA data
-// ═══════════════════════════════════════
-const T = {
-  0:{0:1,1:2},1:{0:3,1:-1},2:{0:-1,1:3},3:{0:4,1:5},
-  4:{0:4,1:6},5:{0:4,1:7},6:{0:8,1:9},7:{0:4,1:10},
-  8:{0:11,1:12},9:{0:13,1:14},10:{0:8,1:15},
-  11:{0:11,1:12},12:{0:8,1:16},13:{0:4,1:6},
-  14:{0:11,1:14},15:{0:11,1:14},16:{0:13,1:14}
-};
-const ACC = new Set([11,12,13,14,16]);
+    // ═══════════════════════════════════════
+    //  State positions
+    // ═══════════════════════════════════════
+    const P = {
+      0: [75, 310], 1: [175, 200], 2: [175, 420],
+      3: [310, 310], 4: [430, 310], 5: [310, 160],
+      6: [560, 310], 7: [430, 100], 10: [560, 100],
+      8: [690, 230], 9: [690, 410], 15: [690, 100],
+      11: [830, 140], 12: [830, 310], 14: [830, 490],
+      13: [560, 500], 16: [960, 400],
+      '-1': [175, 560]
+    };
 
-// ═══════════════════════════════════════
-//  State positions
-// ═══════════════════════════════════════
-const P = {
-  0:[75,310], 1:[175,200], 2:[175,420],
-  3:[310,310], 4:[430,310], 5:[310,160],
-  6:[560,310], 7:[430,100], 10:[560,100],
-  8:[690,230], 9:[690,410], 15:[690,100],
-  11:[830,140], 12:[830,310], 14:[830,490],
-  13:[560,500], 16:[960,400],
-  '-1':[175,560]
-};
+    const R = 21;
+    const svg = document.getElementById('svg');
+    const ns = 'http://www.w3.org/2000/svg';
 
-const R = 21;
-const svg = document.getElementById('svg');
-const ns = 'http://www.w3.org/2000/svg';
-
-function ce(tag, a) {
-  const e = document.createElementNS(ns, tag);
-  for (const [k, v] of Object.entries(a)) e.setAttribute(k, v);
-  return e;
-}
-
-// Arrow marker
-const defs = ce('defs', {});
-const mk = ce('marker', {
-  id:'ah', viewBox:'0 0 10 10', refX:'8', refY:'5',
-  markerWidth:'5.5', markerHeight:'5.5', orient:'auto-start-reverse'
-});
-mk.appendChild(ce('path', {
-  d:'M2 1.5L8 5L2 8.5', fill:'none', stroke:'context-stroke',
-  'stroke-width':'1.5', 'stroke-linecap':'round', 'stroke-linejoin':'round'
-}));
-defs.appendChild(mk);
-svg.appendChild(defs);
-
-// ── Edges ──
-const rawE = [];
-for (const s in T) {
-  for (const sym of [0, 1]) {
-    const t = T[s][sym];
-    if (t !== undefined) rawE.push({ src: +s, dst: t, sym: String(sym) });
-  }
-}
-
-// Merge same src->dst
-const eMap = {};
-rawE.forEach(e => {
-  const k = e.src + ',' + e.dst;
-  if (!eMap[k]) eMap[k] = { src: e.src, dst: e.dst, syms: [] };
-  eMap[k].syms.push(e.sym);
-});
-
-// Detect bidirectional
-const pairSet = {};
-Object.values(eMap).forEach(e => {
-  const uk = Math.min(e.src, e.dst) + ',' + Math.max(e.src, e.dst);
-  if (!pairSet[uk]) pairSet[uk] = [];
-  pairSet[uk].push(e);
-});
-
-const finalEdges = [];
-for (const uk in pairSet) {
-  const group = pairSet[uk];
-  if (group.length === 2 && group[0].src !== group[1].src) {
-    group[0].curve = 1;
-    group[1].curve = -1;
-  } else {
-    group.forEach(e => e.curve = 0);
-  }
-  group.forEach(e => {
-    e.label = e.syms.join(',');
-    e.self = e.src === e.dst;
-    finalEdges.push(e);
-  });
-}
-
-function drawEdge(e) {
-  const [x1, y1] = P[e.src];
-  const [x2, y2] = P[e.dst];
-  const g = ce('g', {});
-
-  if (e.self) {
-    const d = `M${x1 - 10} ${y1 - R + 2} C${x1 - 26} ${y1 - R - 30} ${x1 + 26} ${y1 - R - 30} ${x1 + 10} ${y1 - R + 2}`;
-    g.appendChild(ce('path', { d, fill:'none', stroke:'#555', 'stroke-width':'1.2', 'marker-end':'url(#ah)' }));
-    const t = ce('text', { x:x1, y:y1 - R - 28, 'text-anchor':'middle', 'font-size':'11', 'font-weight':'600', fill:'#333' });
-    t.textContent = e.label;
-    g.appendChild(t);
-  } else {
-    const dx = x2 - x1, dy = y2 - y1, dist = Math.hypot(dx, dy);
-    const ux = dx / dist, uy = dy / dist;
-    const extra = ACC.has(e.dst) ? 5 : 0;
-    const sx = x1 + R * ux, sy = y1 + R * uy;
-    const ex = x2 - (R + extra) * ux, ey = y2 - (R + extra) * uy;
-    const nx = -uy, ny = ux;
-
-    if (e.curve !== 0) {
-      const mx = (sx + ex) / 2, my = (sy + ey) / 2;
-      const off = e.curve * 28;
-      const cpx = mx + nx * off, cpy = my + ny * off;
-      g.appendChild(ce('path', {
-        d:`M${sx} ${sy} Q${cpx} ${cpy} ${ex} ${ey}`,
-        fill:'none', stroke:'#555', 'stroke-width':'1.2', 'marker-end':'url(#ah)'
-      }));
-      const lx = mx + nx * off * 0.55, ly = my + ny * off * 0.55;
-      const t = ce('text', { x:lx, y:ly - 4, 'text-anchor':'middle', 'font-size':'11', 'font-weight':'600', fill:'#333' });
-      t.textContent = e.label;
-      g.appendChild(t);
-    } else {
-      g.appendChild(ce('line', {
-        x1:sx, y1:sy, x2:ex, y2:ey,
-        stroke:'#555', 'stroke-width':'1.2', 'marker-end':'url(#ah)'
-      }));
-      const mx = (sx + ex) / 2, my = (sy + ey) / 2;
-      const t = ce('text', { x:mx + nx * 10, y:my + ny * 10, 'text-anchor':'middle', 'font-size':'11', 'font-weight':'600', fill:'#333' });
-      t.textContent = e.label;
-      g.appendChild(t);
+    function ce(tag, a) {
+      const e = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(a)) e.setAttribute(k, v);
+      return e;
     }
-  }
-  svg.appendChild(g);
-}
 
-finalEdges.forEach(drawEdge);
-
-// Start arrow
-const sa = ce('g', {});
-sa.appendChild(ce('line', {
-  x1:P[0][0] - 50, y1:P[0][1], x2:P[0][0] - R - 2, y2:P[0][1],
-  stroke:'#111', 'stroke-width':'1.8', 'marker-end':'url(#ah)'
-}));
-const stxt = ce('text', {
-  x:P[0][0] - 52, y:P[0][1] - 7,
-  'text-anchor':'end', 'font-size':'10', 'font-weight':'700',
-  fill:'#888', 'font-family':'Nunito, sans-serif'
-});
-stxt.textContent = 'start';
-sa.appendChild(stxt);
-svg.appendChild(sa);
-
-// ── Draw states ──
-const allStates = [...Array(17).keys(), -1];
-allStates.forEach(i => {
-  if (!P[i]) return;
-  const [cx, cy] = P[i];
-  const g = ce('g', { id: 'sg' + i });
-  const isDead = i === -1;
-  const isAcc = ACC.has(i);
-
-  if (isAcc) {
-    g.appendChild(ce('circle', {
-      cx, cy, r: R + 5, fill:'none', stroke:'#111', 'stroke-width':'1.8'
+    // Arrow marker
+    const defs = ce('defs', {});
+    const mk = ce('marker', {
+      id: 'ah', viewBox: '0 0 10 10', refX: '8', refY: '5',
+      markerWidth: '5.5', markerHeight: '5.5', orient: 'auto-start-reverse'
+    });
+    mk.appendChild(ce('path', {
+      d: 'M2 1.5L8 5L2 8.5', fill: 'none', stroke: 'context-stroke',
+      'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
     }));
-  }
+    defs.appendChild(mk);
+    svg.appendChild(defs);
 
-  g.appendChild(ce('circle', {
-    cx, cy, r: R,
-    fill: isDead ? '#f0f0f0' : '#fff',
-    stroke: isDead ? '#aaa' : '#111',
-    'stroke-width': '2'
-  }));
-
-  // Label: start state = "-", accept states = "+", dead = "dead", others = empty
-  let label = '';
-  if (isDead) label = 'dead';
-  else if (i === 0) label = '\u2013'; // en-dash for start
-  else if (isAcc) label = '+';
-
-  if (label) {
-    const t = ce('text', {
-      x:cx, y:cy, 'text-anchor':'middle', 'dominant-baseline':'central',
-      'font-size': isDead ? '10' : '14', 'font-weight':'700',
-      fill: isDead ? '#999' : '#111'
-    });
-    t.textContent = label;
-    g.appendChild(t);
-  }
-  svg.appendChild(g);
-});
-
-// ═══════════════════════════════════════
-//  Simulator
-// ═══════════════════════════════════════
-const inp = document.getElementById('inp');
-const badge = document.getElementById('badge');
-const pathEl = document.getElementById('path');
-
-function resetHL() {
-  allStates.forEach(i => {
-    if (!P[i]) return;
-    const g = document.getElementById('sg' + i);
-    if (!g) return;
-    const isDead = i === -1;
-    const isAcc = ACC.has(i);
-    const circles = g.querySelectorAll('circle');
-    circles.forEach((c, ci) => {
-      if (isAcc && ci === 0) {
-        c.setAttribute('stroke', '#111');
-        c.setAttribute('stroke-width', '1.8');
+    // ── Edges ──
+    const rawE = [];
+    for (const s in T) {
+      for (const sym of [0, 1]) {
+        const t = T[s][sym];
+        if (t !== undefined) rawE.push({ src: +s, dst: t, sym: String(sym) });
       }
-      if (ci === (isAcc ? 1 : 0)) {
-        c.setAttribute('fill', isDead ? '#f0f0f0' : '#fff');
-        c.setAttribute('stroke', isDead ? '#aaa' : '#111');
-        c.setAttribute('stroke-width', '2');
-      }
+    }
+
+    // Merge same src->dst
+    const eMap = {};
+    rawE.forEach(e => {
+      const k = e.src + ',' + e.dst;
+      if (!eMap[k]) eMap[k] = { src: e.src, dst: e.dst, syms: [] };
+      eMap[k].syms.push(e.sym);
     });
-  });
-}
 
-function hlState(id) {
-  if (id === null || id === undefined) return;
-  const g = document.getElementById('sg' + id);
-  if (!g) return;
-  const isAcc = ACC.has(id);
-  const circles = g.querySelectorAll('circle');
-  circles.forEach((c, ci) => {
-    if (isAcc && ci === 0) {
-      c.setAttribute('stroke', '#111');
-      c.setAttribute('stroke-width', '3');
+    // Detect bidirectional
+    const pairSet = {};
+    Object.values(eMap).forEach(e => {
+      const uk = Math.min(e.src, e.dst) + ',' + Math.max(e.src, e.dst);
+      if (!pairSet[uk]) pairSet[uk] = [];
+      pairSet[uk].push(e);
+    });
+
+    const finalEdges = [];
+    for (const uk in pairSet) {
+      const group = pairSet[uk];
+      if (group.length === 2 && group[0].src !== group[1].src) {
+        group[0].curve = 1;
+        group[1].curve = -1;
+      } else {
+        group.forEach(e => e.curve = 0);
+      }
+      group.forEach(e => {
+        e.label = e.syms.join(',');
+        e.self = e.src === e.dst;
+        finalEdges.push(e);
+      });
     }
-    if (ci === (isAcc ? 1 : 0)) {
-      c.setAttribute('fill', '#d0d0d0');
-      c.setAttribute('stroke', '#111');
-      c.setAttribute('stroke-width', '3');
+
+    function drawEdge(e) {
+      const [x1, y1] = P[e.src];
+      const [x2, y2] = P[e.dst];
+      const g = ce('g', {});
+
+      if (e.self) {
+        const d = `M${x1 - 10} ${y1 - R + 2} C${x1 - 26} ${y1 - R - 30} ${x1 + 26} ${y1 - R - 30} ${x1 + 10} ${y1 - R + 2}`;
+        g.appendChild(ce('path', { d, fill: 'none', stroke: '#555', 'stroke-width': '1.2', 'marker-end': 'url(#ah)' }));
+        const t = ce('text', { x: x1, y: y1 - R - 28, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
+        t.textContent = e.label;
+        g.appendChild(t);
+      } else {
+        const dx = x2 - x1, dy = y2 - y1, dist = Math.hypot(dx, dy);
+        const ux = dx / dist, uy = dy / dist;
+        const extra = ACC.has(e.dst) ? 5 : 0;
+        const sx = x1 + R * ux, sy = y1 + R * uy;
+        const ex = x2 - (R + extra) * ux, ey = y2 - (R + extra) * uy;
+        const nx = -uy, ny = ux;
+
+        if (e.curve !== 0) {
+          const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+          const off = e.curve * 28;
+          const cpx = mx + nx * off, cpy = my + ny * off;
+          g.appendChild(ce('path', {
+            d: `M${sx} ${sy} Q${cpx} ${cpy} ${ex} ${ey}`,
+            fill: 'none', stroke: '#555', 'stroke-width': '1.2', 'marker-end': 'url(#ah)'
+          }));
+          const lx = mx + nx * off * 0.55, ly = my + ny * off * 0.55;
+          const t = ce('text', { x: lx, y: ly - 4, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
+          t.textContent = e.label;
+          g.appendChild(t);
+        } else {
+          g.appendChild(ce('line', {
+            x1: sx, y1: sy, x2: ex, y2: ey,
+            stroke: '#555', 'stroke-width': '1.2', 'marker-end': 'url(#ah)'
+          }));
+          const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+          const t = ce('text', { x: mx + nx * 10, y: my + ny * 10, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
+          t.textContent = e.label;
+          g.appendChild(t);
+        }
+      }
+      svg.appendChild(g);
     }
-  });
-}
 
-function sim() {
-  resetHL();
-  const s = inp.value.trim();
+    finalEdges.forEach(drawEdge);
 
-  if (!s) {
-    badge.textContent = 'Waiting';
-    badge.className = 'badge idle';
-    pathEl.innerHTML = '';
-    return;
-  }
+    // Start arrow
+    const sa = ce('g', {});
+    sa.appendChild(ce('line', {
+      x1: P[0][0] - 50, y1: P[0][1], x2: P[0][0] - R - 2, y2: P[0][1],
+      stroke: '#111', 'stroke-width': '1.8', 'marker-end': 'url(#ah)'
+    }));
+    const stxt = ce('text', {
+      x: P[0][0] - 52, y: P[0][1] - 7,
+      'text-anchor': 'end', 'font-size': '10', 'font-weight': '700',
+      fill: '#888', 'font-family': 'Nunito, sans-serif'
+    });
+    stxt.textContent = 'start';
+    sa.appendChild(stxt);
+    svg.appendChild(sa);
 
-  if (!/^[01]+$/.test(s)) {
-    badge.textContent = 'Invalid';
-    badge.className = 'badge no';
-    pathEl.innerHTML = '<span class="dead">Use only 0 and 1</span>';
-    return;
-  }
+    // ── Draw states ──
+    const allStates = [...Array(17).keys(), -1];
+    allStates.forEach(i => {
+      if (!P[i]) return;
+      const [cx, cy] = P[i];
+      const g = ce('g', { id: 'sg' + i });
+      const isDead = i === -1;
+      const isAcc = ACC.has(i);
 
-  // State display name for sim path
-  function sName(id) {
-    if (id === 0) return '\u2013';
-    if (ACC.has(id)) return '+';
-    return '\u25CB'; // small circle for normal states
-  }
+      if (isAcc) {
+        g.appendChild(ce('circle', {
+          cx, cy, r: R + 5, fill: 'none', stroke: '#111', 'stroke-width': '1.8'
+        }));
+      }
 
-  let state = 0;
-  let html = '<span class="st">\u2013</span>';
+      g.appendChild(ce('circle', {
+        cx, cy, r: R,
+        fill: isDead ? '#f0f0f0' : '#fff',
+        stroke: isDead ? '#aaa' : '#111',
+        'stroke-width': '2'
+      }));
 
-  for (const ch of s) {
-    if (state === -1) break;
-    const nxt = T[state][+ch];
-    html += ` <span class="sym">\u2014${ch}\u2192</span> `;
-    if (nxt === -1) {
-      html += '<span class="dead">dead</span>';
-      state = -1;
-      break;
+      // Label: start state = "-", accept states = "+", dead = "dead", others = empty
+      let label = '';
+      if (isDead) label = 'dead';
+      else if (i === 0) label = '\u2013'; // en-dash for start
+      else if (isAcc) label = '+';
+
+      if (label) {
+        const t = ce('text', {
+          x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+          'font-size': isDead ? '10' : '14', 'font-weight': '700',
+          fill: isDead ? '#999' : '#111'
+        });
+        t.textContent = label;
+        g.appendChild(t);
+      }
+      svg.appendChild(g);
+    });
+
+    // ═══════════════════════════════════════
+    //  Simulator
+    // ═══════════════════════════════════════
+    const inp = document.getElementById('inp');
+    const badge = document.getElementById('badge');
+    const pathEl = document.getElementById('path');
+
+    function resetHL() {
+      allStates.forEach(i => {
+        if (!P[i]) return;
+        const g = document.getElementById('sg' + i);
+        if (!g) return;
+        const isDead = i === -1;
+        const isAcc = ACC.has(i);
+        const circles = g.querySelectorAll('circle');
+        circles.forEach((c, ci) => {
+          if (isAcc && ci === 0) {
+            c.setAttribute('stroke', '#111');
+            c.setAttribute('stroke-width', '1.8');
+          }
+          if (ci === (isAcc ? 1 : 0)) {
+            c.setAttribute('fill', isDead ? '#f0f0f0' : '#fff');
+            c.setAttribute('stroke', isDead ? '#aaa' : '#111');
+            c.setAttribute('stroke-width', '2');
+          }
+        });
+      });
     }
-    state = nxt;
-    const a = ACC.has(state);
-    html += `<span class="st${a ? ' acc' : ''}">${sName(state)}</span>`;
-  }
 
-  const accepted = state !== -1 && ACC.has(state);
-  badge.textContent = accepted ? 'Accepted' : 'Rejected';
-  badge.className = 'badge ' + (accepted ? 'yes' : 'no');
-  pathEl.innerHTML = html;
-  if (state !== -1) hlState(state);
-}
+    function hlState(id) {
+      if (id === null || id === undefined) return;
+      const g = document.getElementById('sg' + id);
+      if (!g) return;
+      const isAcc = ACC.has(id);
+      const circles = g.querySelectorAll('circle');
+      circles.forEach((c, ci) => {
+        if (isAcc && ci === 0) {
+          c.setAttribute('stroke', '#111');
+          c.setAttribute('stroke-width', '3');
+        }
+        if (ci === (isAcc ? 1 : 0)) {
+          c.setAttribute('fill', '#d0d0d0');
+          c.setAttribute('stroke', '#111');
+          c.setAttribute('stroke-width', '3');
+        }
+      });
+    }
 
-inp.addEventListener('input', sim);
-</script>
+    function sim() {
+      resetHL();
+      const s = inp.value.trim();
+
+      if (!s) {
+        badge.textContent = 'Waiting';
+        badge.className = 'badge idle';
+        pathEl.innerHTML = '';
+        return;
+      }
+
+      if (!/^[01]+$/.test(s)) {
+        badge.textContent = 'Invalid';
+        badge.className = 'badge no';
+        pathEl.innerHTML = '<span class="dead">Use only 0 and 1</span>';
+        return;
+      }
+
+      // State display name for sim path
+      function sName(id) {
+        if (id === 0) return '\u2013';
+        if (ACC.has(id)) return '+';
+        return '\u25CB'; // small circle for normal states
+      }
+
+      let state = 0;
+      let html = '<span class="st">\u2013</span>';
+
+      for (const ch of s) {
+        if (state === -1) break;
+        const nxt = T[state][+ch];
+        html += ` <span class="sym">\u2014${ch}\u2192</span> `;
+        if (nxt === -1) {
+          html += '<span class="dead">dead</span>';
+          state = -1;
+          break;
+        }
+        state = nxt;
+        const a = ACC.has(state);
+        html += `<span class="st${a ? ' acc' : ''}">${sName(state)}</span>`;
+      }
+
+      const accepted = state !== -1 && ACC.has(state);
+      badge.textContent = accepted ? 'Accepted' : 'Rejected';
+      badge.className = 'badge ' + (accepted ? 'yes' : 'no');
+      pathEl.innerHTML = html;
+      if (state !== -1) hlState(state);
+    }
+
+    inp.addEventListener('input', sim);
+  </script>
 
 </body>
+
 </html>
