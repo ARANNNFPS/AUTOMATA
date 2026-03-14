@@ -153,21 +153,22 @@ function buildDFA(cfg) {
     } else {
       const dx = x2 - x1, dy = y2 - y1, dist = Math.hypot(dx, dy);
       const ux = dx / dist, uy = dy / dist;
-      const extra = ACC.has(e.dst) ? 5 : 0;
-      const sx = x1 + R * ux, sy = y1 + R * uy;
-      const ex = x2 - (R + extra) * ux, ey = y2 - (R + extra) * uy;
+      const srcExtra = ACC.has(e.src) ? 5 : 0;
+      const dstExtra = ACC.has(e.dst) ? 5 : 0;
+      const sx = x1 + (R + srcExtra) * ux, sy = y1 + (R + srcExtra) * uy;
+      const ex = x2 - (R + dstExtra) * ux, ey = y2 - (R + dstExtra) * uy;
       const nx = -uy, ny = ux;
 
       if (e.curve !== 0) {
         const mx = (sx + ex) / 2, my = (sy + ey) / 2;
-        const off = e.curve * 28;
+        const off = e.curve * 40;
         const cpx = mx + nx * off, cpy = my + ny * off;
         g.appendChild(ce('path', {
           d: `M${sx} ${sy} Q${cpx} ${cpy} ${ex} ${ey}`,
           fill: 'none', stroke: '#555', 'stroke-width': '1.2', 'marker-end': mUrl
         }));
-        const lx = mx + nx * off * 0.55, ly = my + ny * off * 0.55;
-        const t = ce('text', { x: lx, y: ly - 4, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
+        const lx = mx + nx * off * 0.6, ly = my + ny * off * 0.6;
+        const t = ce('text', { x: lx, y: ly - 5, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
         t.textContent = e.label;
         g.appendChild(t);
       } else {
@@ -426,12 +427,12 @@ buildDFA({
     8:  [560, 420],
     9:  [445, 580],
     10: [680, 310],
-    11: [800, 200],
-    12: [800, 420],
-    13: [900, 310],
-    14: [900, 140],
-    15: [1000, 230],
-    16: [1000, 100]
+    11: [810, 170],
+    12: [810, 450],
+    13: [940, 450],
+    14: [940, 170],
+    15: [1020, 310],
+    16: [1020, 100]
   }
 });
 </script>
