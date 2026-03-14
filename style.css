@@ -43,6 +43,29 @@ body {
   word-break: break-all;
 }
 
+/* ── Section Divider ── */
+.dfa-section {
+  margin-bottom: 3rem;
+}
+
+.dfa-section-header {
+  text-align: center;
+  padding: 1.5rem 0 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.dfa-section-header h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.4rem;
+}
+
+.dfa-section-header .regex-box {
+  font-size: 0.85rem;
+}
+
 /* ── Simulator ── */
 .sim-panel {
   background: #fff;
@@ -145,49 +168,11 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* ── Legend ── */
-.legend {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #888;
-}
-
-.legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid;
-}
-
-.legend-dot.normal { border-color: #111; background: #fff; }
-.legend-dot.accept { border-color: #111; background: #fff; outline: 2px solid #111; outline-offset: 2px; }
-.legend-dot.active { border-color: #111; background: #ccc; }
-.legend-dot.dead-l { border-color: #bbb; background: #f0f0f0; }
-
-/* ── Footer ── */
-.foot {
-  text-align: center;
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #111;
-  font-size: 0.7rem;
-  color: #aaa;
-  font-weight: 600;
-}
-
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .title-area h1 { font-size: 1.3rem; }
   .regex-box { font-size: 0.75rem; }
   .sim-row { flex-direction: column; align-items: stretch; }
+  .dfa-section-header h2 { font-size: 1rem; }
+  .dfa-section-header .regex-box { font-size: 0.7rem; }
 }
