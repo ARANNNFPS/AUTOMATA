@@ -16,9 +16,7 @@
       <h1>DFA State Diagrams</h1>
     </header>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  DFA #1: (11+00)(1+0)*(101+111+01)(00*+11*)(1+0+11) -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- DFA #1 -->
     <section class="dfa-section">
       <div class="dfa-section-header">
         <h2>DFA #1</h2>
@@ -26,25 +24,24 @@
       </div>
 
       <section class="sim-panel">
-        <div class="sim-label">Test a string (alphabet: 0, 1)</div>
-        <div class="sim-row">
-          <input type="text" id="inp1" placeholder="Enter binary string like 1110110" autocomplete="off" />
-          <div class="badge idle" id="badge1">Waiting</div>
+        <div class="sim-label">Test strings (alphabet: 0, 1) &mdash; one per line</div>
+        <textarea id="inp1" class="sim-textarea" rows="4" placeholder="1100101&#10;111010&#10;00111011"></textarea>
+        <div class="sim-actions">
+          <button type="button" class="run-btn" id="run1">Run</button>
+          <button type="button" class="clear-btn" id="clear1">Clear</button>
+          <span class="hint">Tip: press Ctrl/Cmd + Enter to run</span>
         </div>
-        <div class="sim-path" id="path1"></div>
       </section>
 
       <section class="diagram-area">
-        <div class="sec-label">State Diagram — 17 states + dead state (minimized DFA)</div>
+        <div class="sec-label">State Diagram &mdash; 17 states + dead state (minimized DFA)</div>
         <div class="diagram-card">
           <svg id="svg1" viewBox="0 0 1060 640" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
       </section>
     </section>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  DFA #2: (a+b)(a+b)*(aa+bb)(ab+ba)(a+b)*(aba+baa) -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!-- DFA #2 -->
     <section class="dfa-section">
       <div class="dfa-section-header">
         <h2>DFA #2</h2>
@@ -52,16 +49,17 @@
       </div>
 
       <section class="sim-panel">
-        <div class="sim-label">Test a string (alphabet: a, b)</div>
-        <div class="sim-row">
-          <input type="text" id="inp2" placeholder="Enter string like aabbababa" autocomplete="off" />
-          <div class="badge idle" id="badge2">Waiting</div>
+        <div class="sim-label">Test strings (alphabet: a, b) &mdash; one per line</div>
+        <textarea id="inp2" class="sim-textarea" rows="4" placeholder="aabbababa&#10;abbabaaba&#10;bbaabba"></textarea>
+        <div class="sim-actions">
+          <button type="button" class="run-btn" id="run2">Run</button>
+          <button type="button" class="clear-btn" id="clear2">Clear</button>
+          <span class="hint">Tip: press Ctrl/Cmd + Enter to run</span>
         </div>
-        <div class="sim-path" id="path2"></div>
       </section>
 
       <section class="diagram-area">
-        <div class="sec-label">State Diagram — 17 states + dead state (minimized DFA)</div>
+        <div class="sec-label">State Diagram &mdash; 17 states + dead state (minimized DFA)</div>
         <div class="diagram-card">
           <svg id="svg2" viewBox="0 0 1060 640" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
@@ -70,10 +68,31 @@
 
   </div>
 
+  <!-- Results modal (shared) -->
+  <div class="modal-backdrop" id="modal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h3 id="modal-title">Results</h3>
+        <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-tabs" id="modal-tabs">
+        <button type="button" class="tab-btn active" data-tab="results">Results</button>
+        <button type="button" class="tab-btn" data-tab="cfg">CFG</button>
+        <button type="button" class="tab-btn" data-tab="pda">PDA</button>
+      </div>
+      <div class="modal-body">
+        <div class="tab-panel active" id="tab-results">
+          <div class="modal-summary" id="modal-summary"></div>
+          <div id="results-list"></div>
+        </div>
+        <div class="tab-panel" id="tab-cfg"></div>
+        <div class="tab-panel" id="tab-pda"></div>
+      </div>
+    </div>
+  </div>
+
 <script>
-// ═══════════════════════════════════════════════════
-//  Shared drawing engine
-// ═══════════════════════════════════════════════════
+// Shared drawing engine
 const ns = 'http://www.w3.org/2000/svg';
 function ce(tag, a) {
   const e = document.createElementNS(ns, tag);
@@ -81,13 +100,14 @@ function ce(tag, a) {
   return e;
 }
 
-function buildDFA(cfg) {
-  const { svgId, inputId, badgeId, pathId, T, ACC, positions, alphabet, deadPos, R } = cfg;
-  const svg = document.getElementById(svgId);
+// Shared SVG diagram renderer. edgeLabelLines(syms) returns an array of label lines
+// (multi-line label rendering uses <tspan>). Used by both DFA and PDA diagrams.
+function drawDiagram(svg, cfg, edgeLabelLines) {
+  const { T, ACC, positions, alphabet, deadPos, R } = cfg;
+  const svgId = svg.id;
   const P = { ...positions };
   if (deadPos) P['-1'] = deadPos;
 
-  // Arrow marker
   const defs = ce('defs', {});
   const mk = ce('marker', {
     id: 'ah-' + svgId, viewBox: '0 0 10 10', refX: '8', refY: '5',
@@ -101,7 +121,6 @@ function buildDFA(cfg) {
   svg.appendChild(defs);
   const mUrl = `url(#ah-${svgId})`;
 
-  // ── Edges ──
   const rawE = [];
   for (const s in T) {
     for (const sym of alphabet) {
@@ -133,23 +152,32 @@ function buildDFA(cfg) {
       group.forEach(e => e.curve = 0);
     }
     group.forEach(e => {
-      e.label = e.syms.join(',');
+      e.labelLines = edgeLabelLines(e.syms);
       e.self = e.src === e.dst;
       finalEdges.push(e);
     });
+  }
+
+  function multiText(lines, x, y) {
+    const t = ce('text', { x, y, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
+    lines.forEach((line, idx) => {
+      const tsp = ce('tspan', { x, dy: idx === 0 ? 0 : '1.15em' });
+      tsp.textContent = line;
+      t.appendChild(tsp);
+    });
+    return t;
   }
 
   function drawEdge(e) {
     const [x1, y1] = P[e.src];
     const [x2, y2] = P[e.dst];
     const g = ce('g', {});
+    const extraLines = Math.max(0, e.labelLines.length - 1);
 
     if (e.self) {
       const d = `M${x1 - 10} ${y1 - R + 2} C${x1 - 26} ${y1 - R - 30} ${x1 + 26} ${y1 - R - 30} ${x1 + 10} ${y1 - R + 2}`;
       g.appendChild(ce('path', { d, fill: 'none', stroke: '#555', 'stroke-width': '1.2', 'marker-end': mUrl }));
-      const t = ce('text', { x: x1, y: y1 - R - 28, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
-      t.textContent = e.label;
-      g.appendChild(t);
+      g.appendChild(multiText(e.labelLines, x1, y1 - R - 28 - extraLines * 6));
     } else {
       const dx = x2 - x1, dy = y2 - y1, dist = Math.hypot(dx, dy);
       const ux = dx / dist, uy = dy / dist;
@@ -168,18 +196,14 @@ function buildDFA(cfg) {
           fill: 'none', stroke: '#555', 'stroke-width': '1.2', 'marker-end': mUrl
         }));
         const lx = mx + nx * off * 0.6, ly = my + ny * off * 0.6;
-        const t = ce('text', { x: lx, y: ly - 5, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
-        t.textContent = e.label;
-        g.appendChild(t);
+        g.appendChild(multiText(e.labelLines, lx, ly - 5 - extraLines * 5));
       } else {
         g.appendChild(ce('line', {
           x1: sx, y1: sy, x2: ex, y2: ey,
           stroke: '#555', 'stroke-width': '1.2', 'marker-end': mUrl
         }));
         const mx = (sx + ex) / 2, my = (sy + ey) / 2;
-        const t = ce('text', { x: mx + nx * 10, y: my + ny * 10, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: '#333' });
-        t.textContent = e.label;
-        g.appendChild(t);
+        g.appendChild(multiText(e.labelLines, mx + nx * 10, my + ny * 10 - extraLines * 5));
       }
     }
     svg.appendChild(g);
@@ -187,7 +211,6 @@ function buildDFA(cfg) {
 
   finalEdges.forEach(drawEdge);
 
-  // Start arrow
   const sa = ce('g', {});
   sa.appendChild(ce('line', {
     x1: P[0][0] - 50, y1: P[0][1], x2: P[0][0] - R - 2, y2: P[0][1],
@@ -202,7 +225,6 @@ function buildDFA(cfg) {
   sa.appendChild(stxt);
   svg.appendChild(sa);
 
-  // ── Draw states ──
   const numStates = Object.keys(T).length;
   const allStates = [...Array(numStates).keys(), -1];
 
@@ -226,130 +248,430 @@ function buildDFA(cfg) {
       'stroke-width': '2'
     }));
 
-    let label = '';
-    if (isDead) label = 'dead';
-    else if (i === 0) label = '\u2013';
-    else if (isAcc) label = '+';
-
-    if (label) {
-      const t = ce('text', {
-        x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
-        'font-size': isDead ? '10' : '14', 'font-weight': '700',
-        fill: isDead ? '#999' : '#111'
-      });
-      t.textContent = label;
-      g.appendChild(t);
-    }
+    const label = isDead ? 'dead' : 'q' + i;
+    const t = ce('text', {
+      x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': isDead ? '10' : '13', 'font-weight': '700',
+      fill: isDead ? '#999' : '#111'
+    });
+    t.textContent = label;
+    g.appendChild(t);
     svg.appendChild(g);
   });
-
-  // ── Simulator ──
-  const inp = document.getElementById(inputId);
-  const badge = document.getElementById(badgeId);
-  const pathEl = document.getElementById(pathId);
-  const validRegex = new RegExp('^[' + alphabet.join('') + ']+$');
-
-  function resetHL() {
-    allStates.forEach(i => {
-      if (!P[i]) return;
-      const g = document.getElementById(svgId + '-sg' + i);
-      if (!g) return;
-      const isDead = i === -1;
-      const isAcc = ACC.has(i);
-      const circles = g.querySelectorAll('circle');
-      circles.forEach((c, ci) => {
-        if (isAcc && ci === 0) {
-          c.setAttribute('stroke', '#111');
-          c.setAttribute('stroke-width', '1.8');
-        }
-        if (ci === (isAcc ? 1 : 0)) {
-          c.setAttribute('fill', isDead ? '#f0f0f0' : '#fff');
-          c.setAttribute('stroke', isDead ? '#aaa' : '#111');
-          c.setAttribute('stroke-width', '2');
-        }
-      });
-    });
-  }
-
-  function hlState(id) {
-    if (id === null || id === undefined) return;
-    const g = document.getElementById(svgId + '-sg' + id);
-    if (!g) return;
-    const isAcc = ACC.has(id);
-    const circles = g.querySelectorAll('circle');
-    circles.forEach((c, ci) => {
-      if (isAcc && ci === 0) {
-        c.setAttribute('stroke', '#111');
-        c.setAttribute('stroke-width', '3');
-      }
-      if (ci === (isAcc ? 1 : 0)) {
-        c.setAttribute('fill', '#d0d0d0');
-        c.setAttribute('stroke', '#111');
-        c.setAttribute('stroke-width', '3');
-      }
-    });
-  }
-
-  function sim() {
-    resetHL();
-    const s = inp.value.trim();
-
-    if (!s) {
-      badge.textContent = 'Waiting';
-      badge.className = 'badge idle';
-      pathEl.innerHTML = '';
-      return;
-    }
-
-    if (!validRegex.test(s)) {
-      badge.textContent = 'Invalid';
-      badge.className = 'badge no';
-      pathEl.innerHTML = '<span class="dead">Use only ' + alphabet.join(' and ') + '</span>';
-      return;
-    }
-
-    function sName(id) {
-      if (id === 0) return '\u2013';
-      if (ACC.has(id)) return '+';
-      return '\u25CB';
-    }
-
-    let state = 0;
-    let html = '<span class="st">\u2013</span>';
-
-    for (const ch of s) {
-      if (state === -1) break;
-      const nxt = T[state] ? T[state][ch] : null;
-      html += ` <span class="sym">\u2014${ch}\u2192</span> `;
-      if (nxt === null || nxt === -1 || nxt === undefined) {
-        html += '<span class="dead">dead</span>';
-        state = -1;
-        break;
-      }
-      state = nxt;
-      const a = ACC.has(state);
-      html += `<span class="st${a ? ' acc' : ''}">${sName(state)}</span>`;
-    }
-
-    const accepted = state !== -1 && ACC.has(state);
-    badge.textContent = accepted ? 'Accepted' : 'Rejected';
-    badge.className = 'badge ' + (accepted ? 'yes' : 'no');
-    pathEl.innerHTML = html;
-    if (state !== -1) hlState(state);
-  }
-
-  inp.addEventListener('input', sim);
 }
 
-// ═══════════════════════════════════════════════════
-//  DFA #1: (11+00)(1+0)*(101+111+01)(00*+11*)(1+0+11)
-//  Alphabet: 0, 1
-// ═══════════════════════════════════════════════════
+// Cohen-style flowchart PDA renderer. Draws a generic push-everything / pop-all-at-end PDA
+// using shaped operation nodes (oval, diamond, rectangle).
+function drawFlowchartPDA(svg, alphabet) {
+  const svgId = svg.id;
+
+  const defs = ce('defs', {});
+  const mk = ce('marker', {
+    id: 'ah-' + svgId, viewBox: '0 0 10 10', refX: '8', refY: '5',
+    markerWidth: '5.5', markerHeight: '5.5', orient: 'auto-start-reverse'
+  });
+  mk.appendChild(ce('path', {
+    d: 'M2 1.5L8 5L2 8.5', fill: 'none', stroke: 'context-stroke',
+    'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+  }));
+  defs.appendChild(mk);
+  svg.appendChild(defs);
+  const arrow = `url(#ah-${svgId})`;
+
+  function nodeText(cx, cy, label, size) {
+    const t = ce('text', {
+      x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': String(size || 13), 'font-weight': '800', fill: '#111',
+      'font-family': 'Nunito, sans-serif'
+    });
+    t.textContent = label;
+    return t;
+  }
+
+  function drawOval(cx, cy, label, fillCls) {
+    const g = ce('g', {});
+    g.appendChild(ce('ellipse', { cx, cy, rx: 58, ry: 28, fill: fillCls || '#fff', stroke: '#111', 'stroke-width': '2.2' }));
+    g.appendChild(nodeText(cx, cy, label, 13));
+    svg.appendChild(g);
+  }
+
+  function drawDiamond(cx, cy, label) {
+    const w = 72, h = 42;
+    const pts = `${cx},${cy-h} ${cx+w},${cy} ${cx},${cy+h} ${cx-w},${cy}`;
+    const g = ce('g', {});
+    g.appendChild(ce('polygon', { points: pts, fill: '#fff', stroke: '#111', 'stroke-width': '2.2' }));
+    g.appendChild(nodeText(cx, cy, label, 13));
+    svg.appendChild(g);
+  }
+
+  function drawRect(cx, cy, label) {
+    const w = 116, h = 44;
+    const g = ce('g', {});
+    g.appendChild(ce('rect', { x: cx - w/2, y: cy - h/2, width: w, height: h, fill: '#fff', stroke: '#111', 'stroke-width': '2.2', rx: 2 }));
+    g.appendChild(nodeText(cx, cy, label, 13));
+    svg.appendChild(g);
+  }
+
+  function drawArrow(x1, y1, x2, y2) {
+    svg.appendChild(ce('line', {
+      x1, y1, x2, y2, stroke: '#444', 'stroke-width': '1.7', 'marker-end': arrow
+    }));
+  }
+
+  function drawCurve(d) {
+    svg.appendChild(ce('path', {
+      d, fill: 'none', stroke: '#444', 'stroke-width': '1.7', 'marker-end': arrow
+    }));
+  }
+
+  function drawLabel(x, y, text, anchor) {
+    const t = ce('text', {
+      x, y, 'text-anchor': anchor || 'middle', 'dominant-baseline': 'central',
+      'font-size': '13', 'font-weight': '800', fill: '#222',
+      'font-family': 'JetBrains Mono, monospace'
+    });
+    t.textContent = text;
+    svg.appendChild(t);
+  }
+
+  const sym0 = alphabet[0];
+  const sym1 = alphabet[1];
+
+  // Layout (viewBox 900 x 600)
+  const cx = 450;
+  const startY = 55;
+  const readY = 215;
+  const pushLeftX = 170, pushRightX = 730, pushY = 215;
+  const popY = 385;
+  const acceptY = 520;
+
+  // Nodes
+  drawOval(cx, startY, 'START');
+  drawDiamond(cx, readY, 'READ');
+  drawRect(pushLeftX, pushY, 'PUSH ' + sym0);
+  drawRect(pushRightX, pushY, 'PUSH ' + sym1);
+  drawDiamond(cx, popY, 'POP');
+  drawOval(cx, acceptY, 'ACCEPT');
+
+  // START -> READ
+  drawArrow(cx, startY + 28, cx, readY - 42);
+
+  // READ -> PUSH sym0 (left side)
+  drawArrow(cx - 72, readY, pushLeftX + 58, pushY);
+  drawLabel((cx - 72 + pushLeftX + 58) / 2, readY - 12, sym0);
+
+  // PUSH sym0 -> READ (curve back up over the top to READ's top-left edge)
+  drawCurve(`M${pushLeftX} ${pushY - 22} C${pushLeftX} 95 ${cx - 60} 95 ${cx - 30} ${readY - 28}`);
+
+  // READ -> PUSH sym1 (right side)
+  drawArrow(cx + 72, readY, pushRightX - 58, pushY);
+  drawLabel((cx + 72 + pushRightX - 58) / 2, readY - 12, sym1);
+
+  // PUSH sym1 -> READ (curve back up over the top to READ's top-right edge)
+  drawCurve(`M${pushRightX} ${pushY - 22} C${pushRightX} 95 ${cx + 60} 95 ${cx + 30} ${readY - 28}`);
+
+  // READ -> POP (straight down)
+  drawArrow(cx, readY + 42, cx, popY - 42);
+  drawLabel(cx + 14, (readY + 42 + popY - 42) / 2, 'Δ', 'start');
+
+  // POP self-loop on the right (pops a non-bottom symbol and returns)
+  drawCurve(`M${cx + 60} ${popY - 14} C${cx + 175} ${popY - 38} ${cx + 175} ${popY + 38} ${cx + 60} ${popY + 14}`);
+  drawLabel(cx + 182, popY, sym0 + ',' + sym1, 'start');
+
+  // POP -> ACCEPT (straight down)
+  drawArrow(cx, popY + 42, cx, acceptY - 28);
+  drawLabel(cx + 14, (popY + 42 + acceptY - 28) / 2, 'Z₀', 'start');
+}
+
+function buildDFA(cfg) {
+  const { svgId, inputId, runId, clearId, T, ACC, alphabet, title } = cfg;
+
+  drawDiagram(document.getElementById(svgId), cfg, syms => [syms.join(',')]);
+
+  // Batch simulator
+  const inp = document.getElementById(inputId);
+  const runBtn = document.getElementById(runId);
+  const clearBtn = document.getElementById(clearId);
+  const validRegex = new RegExp('^[' + alphabet.join('') + ']+$');
+
+  function stateLabel(id) {
+    if (id === -1 || id === 'dead') return 'dead';
+    if (ACC.has(id)) return 'q' + id + ' (+)';
+    if (id === 0) return 'q0 (start)';
+    return 'q' + id;
+  }
+
+  function simulate(s) {
+    if (s === '') return { string: s, status: 'invalid', reason: 'Empty string' };
+    if (!validRegex.test(s)) {
+      return { string: s, status: 'invalid', reason: 'Contains characters outside alphabet {' + alphabet.join(', ') + '}' };
+    }
+    let state = 0;
+    const steps = [{ state: 0 }];
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      const nxt = T[state] ? T[state][ch] : null;
+      if (nxt === null || nxt === undefined || nxt === -1) {
+        steps.push({ symbol: ch, state: 'dead' });
+        return {
+          string: s, status: 'rejected', steps,
+          reason: 'No transition from ' + stateLabel(state) + ' on symbol "' + ch + '" at position ' + (i + 1) + ' — fell into dead state',
+          finalState: 'dead'
+        };
+      }
+      state = nxt;
+      steps.push({ symbol: ch, state });
+    }
+    if (ACC.has(state)) {
+      return { string: s, status: 'accepted', steps, finalState: state, reason: 'Ended at accepting state ' + stateLabel(state) };
+    }
+    return { string: s, status: 'rejected', steps, finalState: state, reason: 'String fully consumed but ended at non-accepting state ' + stateLabel(state) };
+  }
+
+  function renderPath(steps) {
+    const parts = [];
+    steps.forEach((step, idx) => {
+      if (idx === 0) {
+        parts.push('<span class="st">' + stateLabel(step.state) + '</span>');
+      } else {
+        const isDead = step.state === 'dead';
+        parts.push('<span class="sym">—' + step.symbol + '→</span>');
+        parts.push('<span class="st' + (isDead ? ' dead' : (ACC.has(step.state) ? ' acc' : '')) + '">' + stateLabel(step.state) + '</span>');
+      }
+    });
+    return parts.join(' ');
+  }
+
+  function runBatch() {
+    const lines = inp.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const results = lines.map(simulate);
+    openModal(cfg, results, renderPath);
+  }
+
+  runBtn.addEventListener('click', runBatch);
+  clearBtn.addEventListener('click', () => { inp.value = ''; inp.focus(); });
+  inp.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runBatch(); }
+  });
+}
+
+// Shared modal renderer (Results / CFG / PDA tabs)
+const modalEl = document.getElementById('modal');
+const modalTitle = document.getElementById('modal-title');
+const modalSummary = document.getElementById('modal-summary');
+const modalClose = document.getElementById('modal-close');
+const resultsList = document.getElementById('results-list');
+const tabCfg = document.getElementById('tab-cfg');
+const tabPda = document.getElementById('tab-pda');
+const tabBtns = document.querySelectorAll('#modal-tabs .tab-btn');
+const tabPanels = {
+  results: document.getElementById('tab-results'),
+  cfg: document.getElementById('tab-cfg'),
+  pda: document.getElementById('tab-pda')
+};
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderResultRow(r, index, renderPath) {
+  const escStr = r.string ? escapeHTML(r.string) : '<em class="empty-str">(empty)</em>';
+  if (r.status === 'invalid') {
+    return '<div class="result-item invalid">' +
+      '<div class="result-head">' +
+        '<span class="result-num">#' + index + '</span>' +
+        '<span class="result-string">' + escStr + '</span>' +
+        '<span class="result-badge inv">Invalid</span>' +
+      '</div>' +
+      '<div class="result-reason">' + escapeHTML(r.reason) + '</div>' +
+    '</div>';
+  }
+  const cls = r.status === 'accepted' ? 'accepted' : 'rejected';
+  const badgeLabel = r.status === 'accepted' ? 'Accepted' : 'Rejected';
+  const badgeCls = r.status === 'accepted' ? 'yes' : 'no';
+  return '<div class="result-item ' + cls + '">' +
+    '<div class="result-head">' +
+      '<span class="result-num">#' + index + '</span>' +
+      '<span class="result-string">' + escStr + '</span>' +
+      '<span class="result-badge ' + badgeCls + '">' + badgeLabel + '</span>' +
+    '</div>' +
+    '<div class="result-path">' + renderPath(r.steps) + '</div>' +
+    '<div class="result-reason">' + escapeHTML(r.reason) + '</div>' +
+  '</div>';
+}
+
+function buildCFG(cfg) {
+  // Hand-crafted CFG that mirrors the regex structure (one non-terminal per major part).
+  const g = cfg.grammar;
+
+  const plain =
+    'G = (V, Σ, P, S)\n\n' +
+    'V = { ' + g.nonTerminals.join(', ') + ' }\n' +
+    'Σ = { ' + g.terminals.join(', ') + ' }\n' +
+    'S = ' + g.start + '\n\n' +
+    'P:\n' +
+    g.productions.map(p => '  ' + p.lhs + ' → ' + p.rhs + (p.note ? '   // ' + p.note : '')).join('\n');
+
+  const html =
+    '<div class="grammar-meta">' +
+      '<div><span class="meta-key">Non-terminals (V)</span> <span class="meta-val">{ ' + g.nonTerminals.join(', ') + ' }</span></div>' +
+      '<div><span class="meta-key">Terminals (Σ)</span> <span class="meta-val">{ ' + g.terminals.join(', ') + ' }</span></div>' +
+      '<div><span class="meta-key">Start symbol (S)</span> <span class="meta-val">' + g.start + '</span></div>' +
+    '</div>' +
+    '<div class="panel-section-title">Productions (P)</div>' +
+    '<div class="grammar-list">' +
+      g.productions.map(p =>
+        '<div class="prod-row">' +
+          '<span class="prod-lhs">' + escapeHTML(p.lhs) + '</span>' +
+          '<span class="prod-arrow">→</span>' +
+          '<span class="prod-rhs">' + escapeHTML(p.rhs) + '</span>' +
+          (p.note ? '<span class="prod-note">' + escapeHTML(p.note) + '</span>' : '') +
+        '</div>'
+      ).join('') +
+    '</div>' +
+    '<div class="panel-foot">' +
+      'Hand-crafted context-free grammar that mirrors the regex structure: each major part of the regex gets its own non-terminal, and the start symbol S concatenates them. ' +
+      'L(G) is the language defined by the regex.' +
+    '</div>';
+
+  return { html, plain };
+}
+
+function buildPDA(cfg) {
+  // Flowchart-style PDA: push every input symbol, then drain the stack at end-of-input.
+  // Language membership is checked by the DFA state tracked inside the READ node.
+  const { alphabet } = cfg;
+  const s0 = alphabet[0];
+  const s1 = alphabet[1];
+
+  const plain =
+    'M = (Q, Σ, Γ, δ, START, Z0, { ACCEPT })  — flowchart form\n\n' +
+    'Q  = { START, READ, PUSH_' + s0 + ', PUSH_' + s1 + ', POP, ACCEPT }\n' +
+    'Σ  = { ' + alphabet.join(', ') + ' }\n' +
+    'Γ  = { ' + alphabet.join(', ') + ', Z0 }\n' +
+    'q0 = START\n' +
+    'Z0 = Z0  (stack-bottom marker)\n' +
+    'F  = { ACCEPT }\n\n' +
+    'Operation flow:\n' +
+    '  START                    ─ε→  READ\n' +
+    '  READ reads ' + s0 + '            →  PUSH_' + s0 + '   (push ' + s0 + ' onto stack) →  READ\n' +
+    '  READ reads ' + s1 + '            →  PUSH_' + s1 + '   (push ' + s1 + ' onto stack) →  READ\n' +
+    '  READ reads Δ (end-of-input) →  POP\n' +
+    '  POP pops ' + s0 + ' or ' + s1 + '         →  POP    (loop until stack drained)\n' +
+    '  POP pops Z0              →  ACCEPT';
+
+  const html =
+    '<div class="pda-tuple">M = (Q, Σ, Γ, δ, START, Z<sub>0</sub>, { ACCEPT })</div>' +
+    '<div class="pda-meta">' +
+      '<div><span class="meta-key">Q</span><span class="meta-val">{ START, READ, PUSH_' + s0 + ', PUSH_' + s1 + ', POP, ACCEPT }</span></div>' +
+      '<div><span class="meta-key">Σ</span><span class="meta-val">{ ' + alphabet.join(', ') + ' }</span></div>' +
+      '<div><span class="meta-key">Γ</span><span class="meta-val">{ ' + alphabet.join(', ') + ', Z<sub>0</sub> }</span></div>' +
+      '<div><span class="meta-key">Start</span><span class="meta-val">START</span></div>' +
+      '<div><span class="meta-key">Z<sub>0</sub></span><span class="meta-val">Stack-bottom marker</span></div>' +
+      '<div><span class="meta-key">F</span><span class="meta-val">{ ACCEPT }</span></div>' +
+    '</div>' +
+    '<div class="panel-section-title">Operation flow</div>' +
+    '<div class="pda-trans-list">' +
+      '<div class="trans-row"><span class="trans-call">START</span><span class="trans-arrow">─ε→</span><span class="trans-out">READ</span></div>' +
+      '<div class="trans-row"><span class="trans-call">READ on \'' + s0 + '\'</span><span class="trans-arrow">→</span><span class="trans-out">PUSH ' + s0 + ' &nbsp;(push ' + s0 + ' onto stack, return to READ)</span></div>' +
+      '<div class="trans-row"><span class="trans-call">READ on \'' + s1 + '\'</span><span class="trans-arrow">→</span><span class="trans-out">PUSH ' + s1 + ' &nbsp;(push ' + s1 + ' onto stack, return to READ)</span></div>' +
+      '<div class="trans-row"><span class="trans-call">READ on Δ (EOF)</span><span class="trans-arrow">→</span><span class="trans-out">POP</span></div>' +
+      '<div class="trans-row"><span class="trans-call">POP pops ' + s0 + ' or ' + s1 + '</span><span class="trans-arrow">→</span><span class="trans-out">POP &nbsp;(loop until stack drained)</span></div>' +
+      '<div class="trans-row"><span class="trans-call">POP pops Z<sub>0</sub></span><span class="trans-arrow">→</span><span class="trans-out">ACCEPT</span></div>' +
+    '</div>' +
+    '<div class="panel-foot">' +
+      'This PDA pushes each input symbol as it is read, then drains the entire stack at end-of-input before transitioning to ACCEPT. ' +
+      'Because the underlying language is regular, the actual language-membership check is performed by the DFA state that READ tracks internally — see the DFA state diagram on the main page for that logic.' +
+    '</div>';
+
+  return { html, plain };
+}
+
+function setActiveTab(name) {
+  tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  Object.entries(tabPanels).forEach(([k, p]) => p.classList.toggle('active', k === name));
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1200);
+  }).catch(() => { btn.textContent = 'Copy failed'; });
+}
+
+function openModal(cfg, results, renderPath) {
+  modalTitle.textContent = cfg.title + ' — Results, CFG & PDA';
+
+  // Results tab
+  if (results.length === 0) {
+    modalSummary.innerHTML = '<span class="sum-empty">No strings entered. Type one string per line in the textarea above.</span>';
+    resultsList.innerHTML = '';
+  } else {
+    const accepted = results.filter(r => r.status === 'accepted').length;
+    const rejected = results.filter(r => r.status === 'rejected').length;
+    const invalid  = results.filter(r => r.status === 'invalid').length;
+    modalSummary.innerHTML =
+      '<span class="sum-pill sum-total">Total: ' + results.length + '</span>' +
+      '<span class="sum-pill sum-acc">Accepted: ' + accepted + '</span>' +
+      '<span class="sum-pill sum-rej">Rejected: ' + rejected + '</span>' +
+      (invalid ? '<span class="sum-pill sum-inv">Invalid: ' + invalid + '</span>' : '');
+    resultsList.innerHTML = results.map((r, i) => renderResultRow(r, i + 1, renderPath)).join('');
+  }
+
+  // CFG tab
+  const cfgBuilt = buildCFG(cfg);
+  tabCfg.innerHTML =
+    '<div class="panel-title-row"><h4 class="panel-title">Context-Free Grammar — G = (V, Σ, P, S)</h4>' +
+    '<button type="button" class="copy-btn" data-copy="cfg">Copy</button></div>' +
+    cfgBuilt.html;
+  tabCfg.querySelector('.copy-btn').addEventListener('click', (e) => copyText(cfgBuilt.plain, e.currentTarget));
+
+  // PDA tab — flowchart diagram + formal description
+  const pdaBuilt = buildPDA(cfg);
+  const pdaSvgId = 'pda-svg-' + cfg.svgId;
+  tabPda.innerHTML =
+    '<div class="panel-title-row"><h4 class="panel-title">Pushdown Automaton — flowchart form</h4>' +
+    '<button type="button" class="copy-btn" data-copy="pda">Copy</button></div>' +
+    '<div class="panel-section-title">Flow Diagram &mdash; <span class="legend-key"><span class="shape-pill oval">oval</span> START / ACCEPT</span> &nbsp;<span class="legend-key"><span class="shape-pill diamond">◇</span> READ / POP</span> &nbsp;<span class="legend-key"><span class="shape-pill rect">▭</span> PUSH</span></div>' +
+    '<div class="diagram-card pda-diagram-card">' +
+      '<svg id="' + pdaSvgId + '" viewBox="0 0 900 600" xmlns="http://www.w3.org/2000/svg"></svg>' +
+    '</div>' +
+    '<div class="pda-legend">' +
+      'Edge labels show the input symbol that was read (or the symbol popped from the stack on POP outgoing edges). ' +
+      '<code>Δ</code> means end-of-input (epsilon read). ' +
+      '<code>Z<sub>0</sub></code> is the stack-bottom marker — when POP returns it, the stack is empty and the PDA accepts.' +
+    '</div>' +
+    pdaBuilt.html;
+
+  // Render flowchart PDA into its tab
+  const pdaSvg = document.getElementById(pdaSvgId);
+  drawFlowchartPDA(pdaSvg, cfg.alphabet);
+
+  tabPda.querySelector('.copy-btn').addEventListener('click', (e) => copyText(pdaBuilt.plain, e.currentTarget));
+
+  setActiveTab('results');
+  modalEl.classList.add('open');
+  modalEl.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal() {
+  modalEl.classList.remove('open');
+  modalEl.setAttribute('aria-hidden', 'true');
+}
+
+tabBtns.forEach(b => b.addEventListener('click', () => setActiveTab(b.dataset.tab)));
+modalClose.addEventListener('click', closeModal);
+modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalEl.classList.contains('open')) closeModal(); });
+
+// DFA #1
 buildDFA({
   svgId: 'svg1',
   inputId: 'inp1',
-  badgeId: 'badge1',
-  pathId: 'path1',
+  runId: 'run1',
+  clearId: 'clear1',
+  title: 'DFA #1',
   alphabet: ['0', '1'],
   R: 21,
   ACC: new Set([11, 12, 13, 14, 16]),
@@ -380,18 +702,31 @@ buildDFA({
     8: [690, 230], 9: [690, 410], 15: [690, 100],
     11: [830, 140], 12: [830, 310], 14: [830, 490],
     13: [560, 500], 16: [960, 400]
+  },
+  grammar: {
+    start: 'S',
+    nonTerminals: ['S', 'A', 'B', 'C', 'D', 'X', 'Y', 'E'],
+    terminals: ['0', '1'],
+    productions: [
+      { lhs: 'S', rhs: 'ABCDE',         note: 'concatenation of all parts' },
+      { lhs: 'A', rhs: '11 | 00',       note: 'matches (11+00)' },
+      { lhs: 'B', rhs: '0B | 1B | ε',   note: 'matches (1+0)*' },
+      { lhs: 'C', rhs: '101 | 111 | 01', note: 'matches (101+111+01)' },
+      { lhs: 'D', rhs: '0X | 1Y',       note: 'matches (00*+11*) — picks the branch' },
+      { lhs: 'X', rhs: '0X | ε',        note: 'remaining 0s of 0 0*' },
+      { lhs: 'Y', rhs: '1Y | ε',        note: 'remaining 1s of 1 1*' },
+      { lhs: 'E', rhs: '1 | 0 | 11',    note: 'matches (1+0+11)' }
+    ]
   }
 });
 
-// ═══════════════════════════════════════════════════
-//  DFA #2: (a+b)(a+b)*(aa+bb)(ab+ba)(a+b)*(aba+baa)
-//  Alphabet: a, b
-// ═══════════════════════════════════════════════════
+// DFA #2
 buildDFA({
   svgId: 'svg2',
   inputId: 'inp2',
-  badgeId: 'badge2',
-  pathId: 'path2',
+  runId: 'run2',
+  clearId: 'clear2',
+  title: 'DFA #2',
   alphabet: ['a', 'b'],
   R: 21,
   ACC: new Set([15, 16]),
@@ -433,6 +768,19 @@ buildDFA({
     14: [940, 170],
     15: [1020, 310],
     16: [1020, 100]
+  },
+  grammar: {
+    start: 'S',
+    nonTerminals: ['S', 'A', 'T', 'C', 'D', 'F'],
+    terminals: ['a', 'b'],
+    productions: [
+      { lhs: 'S', rhs: 'ATCDTF',        note: 'concatenation of all parts' },
+      { lhs: 'A', rhs: 'a | b',         note: 'matches (a+b)' },
+      { lhs: 'T', rhs: 'aT | bT | ε',   note: 'matches (a+b)* — reused for both Kleene stars in S' },
+      { lhs: 'C', rhs: 'aa | bb',       note: 'matches (aa+bb)' },
+      { lhs: 'D', rhs: 'ab | ba',       note: 'matches (ab+ba)' },
+      { lhs: 'F', rhs: 'aba | baa',     note: 'matches (aba+baa)' }
+    ]
   }
 });
 </script>
