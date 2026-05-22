@@ -171,7 +171,7 @@ function drawDiagram(svg, cfg, edgeLabelLines) {
   function drawEdge(e) {
     const [x1, y1] = P[e.src];
     const [x2, y2] = P[e.dst];
-    const g = ce('g', {});
+    const g = ce('g', { id: svgId + '-edge-' + e.src + '-' + e.dst, class: 'dfa-edge' });
     const extraLines = Math.max(0, e.labelLines.length - 1);
 
     if (e.self) {
@@ -600,6 +600,142 @@ function copyText(text, btn) {
   }).catch(() => { btn.textContent = 'Copy failed'; });
 }
 
+// ── String animation on the main DFA diagram ──
+let _currentAnimation = null;
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function resetDiagramHighlights(svgId) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.querySelectorAll('.state-current, .state-visited, .state-accepted, .state-rejected, .edge-active')
+    .forEach(el => el.classList.remove('state-current', 'state-visited', 'state-accepted', 'state-rejected', 'edge-active'));
+  const card = svg.closest('.diagram-card');
+  if (card) card.classList.remove('animating-danger');
+}
+
+function setStateClass(svgId, stateId, cls) {
+  const g = document.getElementById(svgId + '-sg' + stateId);
+  if (!g) return;
+  g.classList.remove('state-current', 'state-visited', 'state-accepted', 'state-rejected');
+  if (cls) g.classList.add(cls);
+}
+
+function setEdgeActive(svgId, src, dst) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.querySelectorAll('.edge-active').forEach(el => el.classList.remove('edge-active'));
+  const g = document.getElementById(svgId + '-edge-' + src + '-' + dst);
+  if (g) g.classList.add('edge-active');
+}
+
+function stopAnimation() {
+  if (_currentAnimation) {
+    _currentAnimation.cancelled = true;
+    _currentAnimation = null;
+  }
+}
+
+function createAnimBanner(cfg, variant, onClose) {
+  const existing = document.getElementById('banner-' + cfg.svgId);
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'banner-' + cfg.svgId;
+  banner.className = 'anim-banner ' + (variant === 'danger' ? 'danger' : 'success');
+  const card = document.getElementById(cfg.svgId).closest('.diagram-card');
+  card.parentNode.insertBefore(banner, card);
+  banner._onClose = onClose;
+  return banner;
+}
+
+function updateAnimBanner(banner, str, pos, status, stateColor) {
+  const chars = str.split('').map((c, i) => {
+    let cls = 'bnr-ch';
+    if (i < pos - 1) cls += ' done';
+    if (i === pos - 1) cls += ' active';
+    return '<span class="' + cls + '">' + escapeHTML(c) + '</span>';
+  }).join('');
+  banner.innerHTML =
+    '<div class="bnr-label">Animating:</div>' +
+    '<div class="bnr-string">' + chars + '</div>' +
+    '<div class="bnr-status' + (stateColor ? ' ' + stateColor : '') + '">' + escapeHTML(status) + '</div>' +
+    '<button type="button" class="bnr-close" aria-label="Stop animation">&times;</button>';
+  banner.querySelector('.bnr-close').addEventListener('click', banner._onClose);
+}
+
+async function animateString(cfg, result) {
+  stopAnimation();
+  const anim = { cancelled: false };
+  _currentAnimation = anim;
+
+  closeModal();
+  await delay(220);
+  if (anim.cancelled) return;
+
+  resetDiagramHighlights(cfg.svgId);
+  const card = document.getElementById(cfg.svgId).closest('.diagram-card');
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  await delay(450);
+  if (anim.cancelled) return;
+
+  const isReject = result.status === 'rejected';
+  if (isReject) card.classList.add('animating-danger');
+
+  const banner = createAnimBanner(cfg, isReject ? 'danger' : 'success', () => {
+    stopAnimation();
+    resetDiagramHighlights(cfg.svgId);
+    banner.remove();
+  });
+
+  const steps = result.steps;
+  const inputStr = result.string;
+
+  // Start at q0
+  setStateClass(cfg.svgId, 0, 'state-current');
+  updateAnimBanner(banner, inputStr, 0, 'Start at q0 — about to read first character');
+  await delay(800);
+  if (anim.cancelled) return;
+
+  for (let i = 1; i < steps.length; i++) {
+    const step = steps[i];
+    const prev = steps[i - 1].state;
+
+    // Dead-state rejection: highlight the killing edge and the dead node
+    if (step.state === 'dead') {
+      setStateClass(cfg.svgId, prev, 'state-visited');
+      setEdgeActive(cfg.svgId, prev, -1);
+      updateAnimBanner(banner, inputStr, i, 'Read "' + step.symbol + '" — no valid transition from q' + prev + ', falling into DEAD state');
+      await delay(700);
+      if (anim.cancelled) return;
+      setStateClass(cfg.svgId, -1, 'state-rejected');
+      updateAnimBanner(banner, inputStr, i, '✗ Rejected — fell into DEAD state after reading "' + step.symbol + '" at position ' + i);
+      _currentAnimation = null;
+      return;
+    }
+
+    setStateClass(cfg.svgId, prev, 'state-visited');
+    setEdgeActive(cfg.svgId, prev, step.state);
+    updateAnimBanner(banner, inputStr, i, 'Read "' + step.symbol + '"  →  q' + prev + ' transitions to q' + step.state);
+    await delay(550);
+    if (anim.cancelled) return;
+
+    setStateClass(cfg.svgId, step.state, 'state-current');
+    await delay(550);
+    if (anim.cancelled) return;
+  }
+
+  // All input consumed — final verdict
+  const finalState = steps[steps.length - 1].state;
+  if (result.status === 'accepted') {
+    setStateClass(cfg.svgId, finalState, 'state-accepted');
+    updateAnimBanner(banner, inputStr, inputStr.length + 1, '✓ Accepted at q' + finalState + ' — all input consumed, ended at accepting state');
+  } else {
+    setStateClass(cfg.svgId, finalState, 'state-rejected');
+    updateAnimBanner(banner, inputStr, inputStr.length + 1, '✗ Rejected — all input consumed but ended at non-accepting state q' + finalState);
+  }
+  _currentAnimation = null;
+}
+
 function openModal(cfg, results, renderPath) {
   modalTitle.textContent = cfg.title + ' — Results, CFG & PDA';
 
@@ -617,6 +753,24 @@ function openModal(cfg, results, renderPath) {
       '<span class="sum-pill sum-rej">Rejected: ' + rejected + '</span>' +
       (invalid ? '<span class="sum-pill sum-inv">Invalid: ' + invalid + '</span>' : '');
     resultsList.innerHTML = results.map((r, i) => renderResultRow(r, i + 1, renderPath)).join('');
+    // Wire up clickable badges → animate the string through the DFA (Accepted and Rejected)
+    resultsList.querySelectorAll('.result-item').forEach((item, idx) => {
+      const result = results[idx];
+      if (!result) return;
+      let badge = null;
+      let title = '';
+      if (result.status === 'accepted') {
+        badge = item.querySelector('.result-badge.yes');
+        title = 'Click to animate this string through the DFA';
+      } else if (result.status === 'rejected') {
+        badge = item.querySelector('.result-badge.no');
+        title = 'Click to animate and see where this string was rejected';
+      }
+      if (!badge) return;
+      badge.classList.add('clickable-badge');
+      badge.title = title;
+      badge.addEventListener('click', () => animateString(cfg, result));
+    });
   }
 
   // CFG tab
