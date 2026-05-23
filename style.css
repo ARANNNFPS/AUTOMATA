@@ -455,33 +455,8 @@ body {
   max-height: 600px;
 }
 .pda-diagram-card svg {
-  min-width: 820px;
+  min-width: 950px;
 }
-
-.legend-key {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #555;
-  text-transform: none;
-  letter-spacing: 0;
-  margin-right: 0.4rem;
-}
-.shape-pill {
-  display: inline-block;
-  font-family: 'Nunito', sans-serif;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 0.05rem 0.45rem;
-  border: 1.5px solid #111;
-  color: #111;
-  background: #fff;
-}
-.shape-pill.oval { border-radius: 100px; }
-.shape-pill.diamond { border-radius: 0; transform: rotate(0deg); }
-.shape-pill.rect { border-radius: 2px; }
 
 .pda-legend {
   font-size: 0.78rem;

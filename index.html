@@ -248,139 +248,23 @@ function drawDiagram(svg, cfg, edgeLabelLines) {
       'stroke-width': '2'
     }));
 
-    const label = isDead ? 'dead' : 'q' + i;
+    let label;
+    if (isDead)        label = 'dead';
+    else if (i === 0)  label = '–';
+    else if (isAcc)    label = '+';
+    else               label = 'q' + i;
+
+    const isSymbol = (label === '–' || label === '+');
     const t = ce('text', {
       x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
-      'font-size': isDead ? '10' : '13', 'font-weight': '700',
+      'font-size': isDead ? '10' : (isSymbol ? '18' : '13'),
+      'font-weight': '800',
       fill: isDead ? '#999' : '#111'
     });
     t.textContent = label;
     g.appendChild(t);
     svg.appendChild(g);
   });
-}
-
-// Cohen-style flowchart PDA renderer. Draws a generic push-everything / pop-all-at-end PDA
-// using shaped operation nodes (oval, diamond, rectangle).
-function drawFlowchartPDA(svg, alphabet) {
-  const svgId = svg.id;
-
-  const defs = ce('defs', {});
-  const mk = ce('marker', {
-    id: 'ah-' + svgId, viewBox: '0 0 10 10', refX: '8', refY: '5',
-    markerWidth: '5.5', markerHeight: '5.5', orient: 'auto-start-reverse'
-  });
-  mk.appendChild(ce('path', {
-    d: 'M2 1.5L8 5L2 8.5', fill: 'none', stroke: 'context-stroke',
-    'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
-  }));
-  defs.appendChild(mk);
-  svg.appendChild(defs);
-  const arrow = `url(#ah-${svgId})`;
-
-  function nodeText(cx, cy, label, size) {
-    const t = ce('text', {
-      x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
-      'font-size': String(size || 13), 'font-weight': '800', fill: '#111',
-      'font-family': 'Nunito, sans-serif'
-    });
-    t.textContent = label;
-    return t;
-  }
-
-  function drawOval(cx, cy, label, fillCls) {
-    const g = ce('g', {});
-    g.appendChild(ce('ellipse', { cx, cy, rx: 58, ry: 28, fill: fillCls || '#fff', stroke: '#111', 'stroke-width': '2.2' }));
-    g.appendChild(nodeText(cx, cy, label, 13));
-    svg.appendChild(g);
-  }
-
-  function drawDiamond(cx, cy, label) {
-    const w = 72, h = 42;
-    const pts = `${cx},${cy-h} ${cx+w},${cy} ${cx},${cy+h} ${cx-w},${cy}`;
-    const g = ce('g', {});
-    g.appendChild(ce('polygon', { points: pts, fill: '#fff', stroke: '#111', 'stroke-width': '2.2' }));
-    g.appendChild(nodeText(cx, cy, label, 13));
-    svg.appendChild(g);
-  }
-
-  function drawRect(cx, cy, label) {
-    const w = 116, h = 44;
-    const g = ce('g', {});
-    g.appendChild(ce('rect', { x: cx - w/2, y: cy - h/2, width: w, height: h, fill: '#fff', stroke: '#111', 'stroke-width': '2.2', rx: 2 }));
-    g.appendChild(nodeText(cx, cy, label, 13));
-    svg.appendChild(g);
-  }
-
-  function drawArrow(x1, y1, x2, y2) {
-    svg.appendChild(ce('line', {
-      x1, y1, x2, y2, stroke: '#444', 'stroke-width': '1.7', 'marker-end': arrow
-    }));
-  }
-
-  function drawCurve(d) {
-    svg.appendChild(ce('path', {
-      d, fill: 'none', stroke: '#444', 'stroke-width': '1.7', 'marker-end': arrow
-    }));
-  }
-
-  function drawLabel(x, y, text, anchor) {
-    const t = ce('text', {
-      x, y, 'text-anchor': anchor || 'middle', 'dominant-baseline': 'central',
-      'font-size': '13', 'font-weight': '800', fill: '#222',
-      'font-family': 'JetBrains Mono, monospace'
-    });
-    t.textContent = text;
-    svg.appendChild(t);
-  }
-
-  const sym0 = alphabet[0];
-  const sym1 = alphabet[1];
-
-  // Layout (viewBox 900 x 600)
-  const cx = 450;
-  const startY = 55;
-  const readY = 215;
-  const pushLeftX = 170, pushRightX = 730, pushY = 215;
-  const popY = 385;
-  const acceptY = 520;
-
-  // Nodes
-  drawOval(cx, startY, 'START');
-  drawDiamond(cx, readY, 'READ');
-  drawRect(pushLeftX, pushY, 'PUSH ' + sym0);
-  drawRect(pushRightX, pushY, 'PUSH ' + sym1);
-  drawDiamond(cx, popY, 'POP');
-  drawOval(cx, acceptY, 'ACCEPT');
-
-  // START -> READ
-  drawArrow(cx, startY + 28, cx, readY - 42);
-
-  // READ -> PUSH sym0 (left side)
-  drawArrow(cx - 72, readY, pushLeftX + 58, pushY);
-  drawLabel((cx - 72 + pushLeftX + 58) / 2, readY - 12, sym0);
-
-  // PUSH sym0 -> READ (curve back up over the top to READ's top-left edge)
-  drawCurve(`M${pushLeftX} ${pushY - 22} C${pushLeftX} 95 ${cx - 60} 95 ${cx - 30} ${readY - 28}`);
-
-  // READ -> PUSH sym1 (right side)
-  drawArrow(cx + 72, readY, pushRightX - 58, pushY);
-  drawLabel((cx + 72 + pushRightX - 58) / 2, readY - 12, sym1);
-
-  // PUSH sym1 -> READ (curve back up over the top to READ's top-right edge)
-  drawCurve(`M${pushRightX} ${pushY - 22} C${pushRightX} 95 ${cx + 60} 95 ${cx + 30} ${readY - 28}`);
-
-  // READ -> POP (straight down)
-  drawArrow(cx, readY + 42, cx, popY - 42);
-  drawLabel(cx + 14, (readY + 42 + popY - 42) / 2, 'Δ', 'start');
-
-  // POP self-loop on the right (pops a non-bottom symbol and returns)
-  drawCurve(`M${cx + 60} ${popY - 14} C${cx + 175} ${popY - 38} ${cx + 175} ${popY + 38} ${cx + 60} ${popY + 14}`);
-  drawLabel(cx + 182, popY, sym0 + ',' + sym1, 'start');
-
-  // POP -> ACCEPT (straight down)
-  drawArrow(cx, popY + 42, cx, acceptY - 28);
-  drawLabel(cx + 14, (popY + 42 + acceptY - 28) / 2, 'Z₀', 'start');
 }
 
 function buildDFA(cfg) {
@@ -538,50 +422,58 @@ function buildCFG(cfg) {
 }
 
 function buildPDA(cfg) {
-  // Flowchart-style PDA: push every input symbol, then drain the stack at end-of-input.
-  // Language membership is checked by the DFA state tracked inside the READ node.
-  const { alphabet } = cfg;
-  const s0 = alphabet[0];
-  const s1 = alphabet[1];
+  // The DFA expressed as a stackless PDA: each transition reads one input symbol
+  // and leaves the stack untouched (pops Z₀, pushes Z₀ back). Since the language
+  // is regular, no real stack operations are required.
+  const { T, ACC, alphabet } = cfg;
+  const stateIds = Object.keys(T).map(s => +s).sort((a, b) => a - b);
+  const accIds = [...ACC].sort((a, b) => a - b);
+
+  const transitions = [];
+  stateIds.forEach(s => {
+    alphabet.forEach(sym => {
+      const t = T[s][sym];
+      if (t !== undefined && t !== null && t !== -1) {
+        transitions.push({ from: s, sym, to: t });
+      }
+    });
+  });
 
   const plain =
-    'M = (Q, Σ, Γ, δ, START, Z0, { ACCEPT })  — flowchart form\n\n' +
-    'Q  = { START, READ, PUSH_' + s0 + ', PUSH_' + s1 + ', POP, ACCEPT }\n' +
+    'M = (Q, Σ, Γ, δ, q0, Z0, F)\n\n' +
+    'Q  = { ' + stateIds.map(s => 'q' + s).join(', ') + ' }\n' +
     'Σ  = { ' + alphabet.join(', ') + ' }\n' +
-    'Γ  = { ' + alphabet.join(', ') + ', Z0 }\n' +
-    'q0 = START\n' +
-    'Z0 = Z0  (stack-bottom marker)\n' +
-    'F  = { ACCEPT }\n\n' +
-    'Operation flow:\n' +
-    '  START                    ─ε→  READ\n' +
-    '  READ reads ' + s0 + '            →  PUSH_' + s0 + '   (push ' + s0 + ' onto stack) →  READ\n' +
-    '  READ reads ' + s1 + '            →  PUSH_' + s1 + '   (push ' + s1 + ' onto stack) →  READ\n' +
-    '  READ reads Δ (end-of-input) →  POP\n' +
-    '  POP pops ' + s0 + ' or ' + s1 + '         →  POP    (loop until stack drained)\n' +
-    '  POP pops Z0              →  ACCEPT';
+    'Γ  = { Z0 }\n' +
+    'q0 = q0\n' +
+    'Z0 = Z0  (stack-bottom marker, never modified)\n' +
+    'F  = { ' + accIds.map(s => 'q' + s).join(', ') + ' }\n\n' +
+    'Transition function δ:\n' +
+    transitions.map(tr => '  δ(q' + tr.from + ', ' + tr.sym + ', Z0) = (q' + tr.to + ', Z0)').join('\n');
 
   const html =
-    '<div class="pda-tuple">M = (Q, Σ, Γ, δ, START, Z<sub>0</sub>, { ACCEPT })</div>' +
+    '<div class="pda-tuple">M = (Q, Σ, Γ, δ, q<sub>0</sub>, Z<sub>0</sub>, F)</div>' +
     '<div class="pda-meta">' +
-      '<div><span class="meta-key">Q</span><span class="meta-val">{ START, READ, PUSH_' + s0 + ', PUSH_' + s1 + ', POP, ACCEPT }</span></div>' +
+      '<div><span class="meta-key">Q</span><span class="meta-val">{ ' + stateIds.map(s => 'q' + s).join(', ') + ' }</span></div>' +
       '<div><span class="meta-key">Σ</span><span class="meta-val">{ ' + alphabet.join(', ') + ' }</span></div>' +
-      '<div><span class="meta-key">Γ</span><span class="meta-val">{ ' + alphabet.join(', ') + ', Z<sub>0</sub> }</span></div>' +
-      '<div><span class="meta-key">Start</span><span class="meta-val">START</span></div>' +
-      '<div><span class="meta-key">Z<sub>0</sub></span><span class="meta-val">Stack-bottom marker</span></div>' +
-      '<div><span class="meta-key">F</span><span class="meta-val">{ ACCEPT }</span></div>' +
+      '<div><span class="meta-key">Γ</span><span class="meta-val">{ Z<sub>0</sub> }</span></div>' +
+      '<div><span class="meta-key">q<sub>0</sub></span><span class="meta-val">q0</span></div>' +
+      '<div><span class="meta-key">Z<sub>0</sub></span><span class="meta-val">Z<sub>0</sub> (stack-bottom marker)</span></div>' +
+      '<div><span class="meta-key">F</span><span class="meta-val">{ ' + accIds.map(s => 'q' + s).join(', ') + ' }</span></div>' +
     '</div>' +
-    '<div class="panel-section-title">Operation flow</div>' +
+    '<div class="panel-section-title">Transition function δ</div>' +
     '<div class="pda-trans-list">' +
-      '<div class="trans-row"><span class="trans-call">START</span><span class="trans-arrow">─ε→</span><span class="trans-out">READ</span></div>' +
-      '<div class="trans-row"><span class="trans-call">READ on \'' + s0 + '\'</span><span class="trans-arrow">→</span><span class="trans-out">PUSH ' + s0 + ' &nbsp;(push ' + s0 + ' onto stack, return to READ)</span></div>' +
-      '<div class="trans-row"><span class="trans-call">READ on \'' + s1 + '\'</span><span class="trans-arrow">→</span><span class="trans-out">PUSH ' + s1 + ' &nbsp;(push ' + s1 + ' onto stack, return to READ)</span></div>' +
-      '<div class="trans-row"><span class="trans-call">READ on Δ (EOF)</span><span class="trans-arrow">→</span><span class="trans-out">POP</span></div>' +
-      '<div class="trans-row"><span class="trans-call">POP pops ' + s0 + ' or ' + s1 + '</span><span class="trans-arrow">→</span><span class="trans-out">POP &nbsp;(loop until stack drained)</span></div>' +
-      '<div class="trans-row"><span class="trans-call">POP pops Z<sub>0</sub></span><span class="trans-arrow">→</span><span class="trans-out">ACCEPT</span></div>' +
+      transitions.map(tr =>
+        '<div class="trans-row">' +
+          '<span class="trans-call">δ(q' + tr.from + ', ' + tr.sym + ', Z<sub>0</sub>)</span>' +
+          '<span class="trans-arrow">=</span>' +
+          '<span class="trans-out">(q' + tr.to + ', Z<sub>0</sub>)</span>' +
+        '</div>'
+      ).join('') +
     '</div>' +
     '<div class="panel-foot">' +
-      'This PDA pushes each input symbol as it is read, then drains the entire stack at end-of-input before transitioning to ACCEPT. ' +
-      'Because the underlying language is regular, the actual language-membership check is performed by the DFA state that READ tracks internally — see the DFA state diagram on the main page for that logic.' +
+      'Since the language is regular, this PDA never pushes or pops &mdash; ' +
+      'the stack symbol Z<sub>0</sub> remains constant on every move. It is the DFA expressed as a PDA. ' +
+      'Acceptance is by final state.' +
     '</div>';
 
   return { html, plain };
@@ -781,26 +673,26 @@ function openModal(cfg, results, renderPath) {
     cfgBuilt.html;
   tabCfg.querySelector('.copy-btn').addEventListener('click', (e) => copyText(cfgBuilt.plain, e.currentTarget));
 
-  // PDA tab — flowchart diagram + formal description
+  // PDA tab — DFA expressed as a stackless PDA (no real stack ops needed for regular languages)
   const pdaBuilt = buildPDA(cfg);
   const pdaSvgId = 'pda-svg-' + cfg.svgId;
   tabPda.innerHTML =
-    '<div class="panel-title-row"><h4 class="panel-title">Pushdown Automaton — flowchart form</h4>' +
+    '<div class="panel-title-row"><h4 class="panel-title">Pushdown Automaton — state diagram</h4>' +
     '<button type="button" class="copy-btn" data-copy="pda">Copy</button></div>' +
-    '<div class="panel-section-title">Flow Diagram &mdash; <span class="legend-key"><span class="shape-pill oval">oval</span> START / ACCEPT</span> &nbsp;<span class="legend-key"><span class="shape-pill diamond">◇</span> READ / POP</span> &nbsp;<span class="legend-key"><span class="shape-pill rect">▭</span> PUSH</span></div>' +
+    '<div class="panel-section-title">State Diagram &mdash; edge label: <code>input, pop / push</code></div>' +
     '<div class="diagram-card pda-diagram-card">' +
-      '<svg id="' + pdaSvgId + '" viewBox="0 0 900 600" xmlns="http://www.w3.org/2000/svg"></svg>' +
+      '<svg id="' + pdaSvgId + '" viewBox="0 0 1060 640" xmlns="http://www.w3.org/2000/svg"></svg>' +
     '</div>' +
     '<div class="pda-legend">' +
-      'Edge labels show the input symbol that was read (or the symbol popped from the stack on POP outgoing edges). ' +
-      '<code>Δ</code> means end-of-input (epsilon read). ' +
-      '<code>Z<sub>0</sub></code> is the stack-bottom marker — when POP returns it, the stack is empty and the PDA accepts.' +
+      'Every transition reads one input symbol, pops <code>Z<sub>0</sub></code>, and pushes <code>Z<sub>0</sub></code> back — ' +
+      'so the stack is never actually modified. Because the language is regular, no real stack operations are needed; ' +
+      'this PDA has exactly the same topology as the DFA, just with PDA-style edge labels.' +
     '</div>' +
     pdaBuilt.html;
 
-  // Render flowchart PDA into its tab
+  // Render PDA state diagram into its tab (same engine as the DFA, with PDA edge labels)
   const pdaSvg = document.getElementById(pdaSvgId);
-  drawFlowchartPDA(pdaSvg, cfg.alphabet);
+  drawDiagram(pdaSvg, cfg, syms => [syms.join(','), 'Z₀ / Z₀']);
 
   tabPda.querySelector('.copy-btn').addEventListener('click', (e) => copyText(pdaBuilt.plain, e.currentTarget));
 
